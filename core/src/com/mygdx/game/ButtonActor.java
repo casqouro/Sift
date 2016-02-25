@@ -21,14 +21,15 @@ public class ButtonActor extends Actor {
     
     public ButtonActor() {
         Random rand = new Random();
-        current = new Texture(new FileHandle("S:\\Users\\Canambra\\Downloads\\Desktop\\Sift\\assets\\SiftingGameAssets\\" + (rand.nextInt(6) + 1) + "priority.png"));
+        current = new Texture(new FileHandle("..\\assets\\" + (rand.nextInt(6) + 1) + "priority.png"));
         up = current;
-        down = new Texture(new FileHandle("S:\\Users\\Canambra\\Downloads\\Desktop\\Sift\\assets\\SiftingGameAssets\\" + 0 + "priority.png"));        
+        down = new Texture(new FileHandle("..\\assets\\" + 0 + "priority.png"));        
     }
     
     public void setup() {
         xLoc = (index / 11) * prefW;
         yLoc = (index % 11) * prefH;
+        setBounds(xLoc, yLoc, prefW, prefH);
     }
     
     @Override

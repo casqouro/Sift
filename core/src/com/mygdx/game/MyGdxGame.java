@@ -5,7 +5,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.EventListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -48,10 +47,10 @@ int prefH;
 	}
         
         private void setup() throws IOException {
-            //BufferedReader br = new BufferedReader(new FileReader("..\\assets\\SiftingGameAssets\\layout_physical.txt"));  
-            BufferedReader br = new BufferedReader(new FileReader("S:\\Users\\Canambra\\Downloads\\Desktop\\Sift\\assets\\SiftingGameAssets\\layout_physical.txt"));
+            BufferedReader br = new BufferedReader(new FileReader("..\\assets\\layout_physical.txt")); 
+            
             String line = br.readLine();
-            String[] token;
+            String[] token;         
 
             actorSet = new ButtonActor[11][11];
             while (line != null) {   
@@ -91,6 +90,7 @@ int prefH;
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 actor.current = actor.down;
+                System.out.println(actor.index);
                 return true;
             }
             
@@ -136,15 +136,7 @@ int prefH;
                 
                 actorSet[row + saveX][col + saveY].index = saveIndex;
                 actorSet[row + saveX][col + saveY].setup();
-                
-                //EventListener listener = actorSet[row][col].getListeners().get(0);
-                //actorSet[row][col].getListeners().removeIndex(0);
-                //actorSet[row][col].addListener(new myListener(actorSet[row][col]));
-                
-                //EventListener listenerTwo = actorSet[row + saveX][col + saveY].getListeners().get(0);
-                //actorSet[row + saveX][col + saveY].getListeners().removeIndex(0);
-                //actorSet[row + saveX][col + saveY].addListener(new myListener(actorSet[row + saveX][col + saveY]));                
-                
+
                 row = row + saveX;
                 col = col + saveY;
                 sentinel++;
