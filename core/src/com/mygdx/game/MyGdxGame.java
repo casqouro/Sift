@@ -26,6 +26,11 @@ int prefH;
 boolean touched;
 int touchnum;
 
+boolean quadZero = false;
+boolean quadOne = false;
+boolean quadTwo = false;
+boolean quadThree = false;
+
 /* My current problem is that the bounds of a listener are set when the listener
    is created.
 
@@ -43,7 +48,7 @@ int touchnum;
             prefW = 30;
             prefH = 30;     
             
-            touchList = new LinkedList<ButtonActor>();
+            touchList = new LinkedList<>();
             
             try {
                 setup();
@@ -75,124 +80,154 @@ int touchnum;
                 actor.prefH = prefH;                   
                 actor.xShift = xShift;
                 actor.yShift = yShift;   
-                actor.setup();
-
-                actor.setBounds(row * prefW, col * prefH, prefW, prefH);                
+                actor.setup();               
                 actor.addListener(new myListener(actor));
-
                 stage.addActor(actor);
                 
                 line = br.readLine();            
             }    
         }
         
+        /* Deleted tile placement when a row or column already has deleted tiles
+           is occassionally problematic, but I'm not entirely sure why.
+        
+           This only occurs because I don't clean up white '0' (deletion) tiles.
+           Once I start cleaning them up the logic should be fine.
+        
+           However, the game is kinda fun as is!  I might want to push this out,
+           and to do so I need to fix this bug.
+        */
         private void postDeletionMovement() {
-            // I could hard code this for all four quadrants and then revisit it later?
-            
-            /*
-            for (ButtonActor e : touchList) {
-                e.inDeletionProcess = true;
-                e.current = e.transparent;
-            }
-            
-            for (ButtonActor e : touchList) {
-                int x = e.index / 11;
-                int y = e.index % 11;
+            touchList.stream().forEach((e) -> {
+                e.inDeletionProcess = true;                        
                 
-                    // find the next NON-NULL neighbor and move actor/texture
-                    // move to the closest neighbor and repeat                 
-                                                
-                // MUST SORT THE INPUT BEFORE EVERY "IF" STATEMENT
-                // otherwise in |1|ea|eb| you might handle ea before eb
-                // if you handle |eb| first you can eliminate |ea|
-  
-                if (x < 6 && y > 5) { // Upper Left Quadrant
-                    int sentinel = 0;
-                    int adjust = 1;// could use adjust to make this confirm with distance between starting "X" and "0"
-                    int edge = y - 6;
-              
-                    while ((sentinel == 0) && (x - adjust >= 0 + edge)) {
-                        if (!actorSet[x - adjust][y].inDeletionProcess) {
-                            sentinel = 1;
-                            
-                            e.current = actorSet[x - adjust][y].current;
-                            actorSet[x - adjust][y].current = actorSet[x - adjust][y].transparent;
-                            
-                            //System.out.println("X/Y: (" + x + "," + y + ") Adjust: " + adjust);  
-                        } else {
-                            adjust++;
-                            
-                            if (x - adjust < 0 + edge) {
-                                sentinel = 1;
-                            }
+                int quadrant = e.determineQuadrant();
+                switch (quadrant) {
+                    case 0: 
+                        quadZero = true;                             
+                        break;
+                    case 1:
+                        quadOne = true;
+                        break;
+                    case 2:
+                        quadTwo = true;
+                        break;
+                    case 3:
+                        quadThree = true;
+                        break;
+                }                 
+            });
+            
+            if (quadZero == true) { // UPPER LEFT
+                for (int adjust = 0; adjust < 5; adjust++) {
+                    LinkedList<Integer> priorityList = new LinkedList<>();
+
+                    // Add the priority of each deleted button to a list.
+                    // Reduce the list-size for each successively smaller tier.
+                    for (int a = 5; a >= 0 + adjust; a--) {
+                        if (!actorSet[a][6 + adjust].inDeletionProcess) {
+                            priorityList.add(actorSet[a][6 + adjust].priority);
                         }
                     }
-                }
-                
-                if (x > 5 && y > 4) { // Upper Right Quadrant
-                    int sentinel = 0;
-                    int adjust = 1;
-                    int edge = x - 6;
-                                  
-                    while ((sentinel == 0) && (y + adjust <= 10 - edge)) { // 10 - edge?
-                        if (!actorSet[x][y + adjust].inDeletionProcess) {
-                            sentinel = 1;
-                            //System.out.println("X/Y: (" + x + "," + y + ") Adjust: " + adjust);  
-                        } else {
-                            adjust++;
-                            
-                            if (y + adjust > 10 - edge) {
-                                sentinel = 1;
-                            }
-                        }
-                    }                    
-                }
-                
-                if (x > 4 && y < 5) { // Lower Right Quadrant
-                    int sentinel = 0;
-                    int adjust = 1;
-                    int edge = y - 6;
-              
-                    while ((sentinel == 0) && (x + adjust <= 0 + edge)) {
-                        if (!actorSet[x + adjust][y].inDeletionProcess) {
-                            sentinel = 1;
-                            //System.out.println("X/Y: (" + x + "," + y + ") Adjust: " + adjust);  
-                        } else {
-                            adjust++;
-                            
-                            if (x + adjust > 10 - edge) {
-                                sentinel = 1;
-                            }
-                        }
-                    } 
-                }
-                
-                if (x < 5 && y < 6) { // Lower Left Quadrant
-                    int sentinel = 0;
-                    int adjust = 1;
-                    int edge = x - 6;
-                                  
-                    while ((sentinel == 0) && (y - adjust <= 0 + edge)) {
-                        System.out.println(x + " " + (y - adjust));
-                        if (!actorSet[x][y - adjust].inDeletionProcess) {
-                            sentinel = 1;
-                            //System.out.println("X/Y: (" + x + "," + y + ") Adjust: " + adjust);  
-                        } else {
-                            adjust++;
-                            
-                            if (y - adjust < 0 + edge) {
-                                sentinel = 1;
-                            }
-                        }
-                    } 
+
+                    // Shift remaining buttons to appropriate positions
+                    int length = priorityList.size();                
+                    for (int a = 0; a < length; a++) {
+                        actorSet[5 - a][6 + adjust].swapPriority(priorityList.removeFirst());
+                    }
+
+                    // Generate new buttons for empty squares
+                    for (int a = 5 - length; a >= 0 + adjust; a--) {
+                        actorSet[a][6 + adjust].swapPriority(0);
+                    }
                 }
             }
             
-            for (ButtonActor e : touchList) {
-                e.inDeletionProcess = false;
+            if (quadOne == true) { // UPPER RIGHT
+                for (int adjust = 0; adjust < 5; adjust++) {
+                    LinkedList<Integer> priorityList = new LinkedList<>();
+
+                    // Add the priority of each deleted button to a list.
+                    // Reduce the list-size for each successively smaller tier.
+                    for (int a = 5; a <= 10 - adjust; a++) {
+                        if (!actorSet[6 + adjust][a].inDeletionProcess) {
+                            priorityList.add(actorSet[6 + adjust][a].priority);
+                        }
+                    }
+                                                       
+                    // Shift remaining buttons to appropriate positions
+                    int length = priorityList.size();                
+                    for (int a = 0; a < length; a++) {
+                        actorSet[6 + adjust][5 + a].swapPriority(priorityList.removeFirst());
+                    }
+ 
+                    // Generate new buttons for empty squares
+                    for (int a = 5 + length; a <= 10 - adjust; a++) {
+                        actorSet[6 + adjust][a].swapPriority(0);
+                    }
+                }               
+            }       
+            
+            if (quadTwo == true) { // LOWER RIGHT
+                for (int adjust = 0; adjust < 5; adjust++) {
+                    LinkedList<Integer> priorityList = new LinkedList<>();
+
+                    // Add the priority of each deleted button to a list.
+                    // Reduce the list-size for each successively smaller tier.
+                    for (int a = 5; a <= 10 - adjust; a++) {
+                        if (!actorSet[a][4 - adjust].inDeletionProcess) {
+                            priorityList.add(actorSet[a][4 - adjust].priority);
+                        }
+                    }                    
+
+                    // Shift remaining buttons to appropriate positions                    
+                    int length = priorityList.size();
+                    for (int a = 0; a < length; a++) {
+                        actorSet[5 + a][4 - adjust].swapPriority(priorityList.removeFirst());
+                    }
+
+                    // Generate new buttons for empty squares
+                    for (int a = 5 + length; a <= 10 - adjust; a++) {
+                        actorSet[a][4 - adjust].swapPriority(0);
+                    }
+                }
+            }    
+            
+            if (quadThree == true) { // LOWER LEFT
+                for (int adjust = 0; adjust < 5; adjust++) {
+                    LinkedList<Integer> priorityList = new LinkedList<>();
+
+                    // Add the priority of each deleted button to a list.
+                    // Reduce the list-size for each successively smaller tier.
+                    for (int a = 5; a >= 0 + adjust; a--) {
+                        if (!actorSet[4 - adjust][a].inDeletionProcess) {
+                            priorityList.add(actorSet[4 - adjust][a].priority);
+                        }
+                    }
+                                                                   
+                    // Shift remaining buttons to appropriate positions
+                    int length = priorityList.size();                
+                    for (int a = 0; a < length; a++) {
+                        actorSet[4 - adjust][5 - a].swapPriority(priorityList.removeFirst());
+                    }
+
+                    // Generate new buttons for empty squares
+                    for (int a = 5 - length; a >= 0 + adjust; a--) {
+                        actorSet[4 - adjust][a].swapPriority(0);
+                    }
+                }               
             }            
-            touchList.clear();
-            */
+            
+            touchList.stream().forEach((e) -> {
+                e.inDeletionProcess = false;    
+            });        
+            
+            quadZero = false;
+            quadOne = false;
+            quadTwo = false;
+            quadThree = false;
+            
+            touchList.clear();            
         }
         
         // How does the player VOID an action?  Currently they cannot.
@@ -204,19 +239,13 @@ int touchnum;
                 this.actor = actor;
             }     
             
-            // Does not work once touchDown/touchUp are implemented.
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                System.out.println("clicked");                               
-            }
-            
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 touched = true;
                 touchnum = actor.priority;
                 actor.current = actor.down;
                 
-                touchList.add(actor);
+                touchList.add(actor);                            
                                 
                 return true;
             }
@@ -227,18 +256,18 @@ int touchnum;
                 touchnum = 0;
 
                 if (touchList.size() > 2) {
-                    postDeletionMovement();                   
+                   postDeletionMovement();                    
                 } else {
-                    for (ButtonActor e : touchList) {
+                    touchList.stream().forEach((e) -> {
                         e.current = e.up;
-                    }
+                    });
                     touchList.clear();
                 }                
             }          
             
             @Override
             public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                if (touched && actor.matches(touchnum) && actor.adjacent(touchList.getLast().index / 11, touchList.getLast().index % 11)) {
+                if (touched && actor.matches(touchnum) && actor.adjacent(touchList.getLast().index)) {
                     boolean inList = false;
                     
                     for (ButtonActor e : touchList) {
@@ -249,22 +278,11 @@ int touchnum;
                     
                     if (!inList) {
                         touchList.add(actor);
-                        actor.current = actor.down;
+                        actor.current = actor.down;                        
                     }
-                }
-                // this code is important because I can call the listener methods from inside
-                //myListener test = (myListener) actor.getListeners().get(1);
-                //test.enter(event, x, y, pointer, fromActor);
-            }
-            
-            @Override
-            public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
-                // Commenting this out eliminated a minor bug, but unsure if it'll introduce others
-                
-                //if(!touched) {
-                //  actor.current = actor.up;
-                //}
-            }   
+                }                
+                // If I'm going to run deletion logic based on quadrants I really don't need a lot of the above.
+            }              
         }
 
         private class KeyProcessor extends InputListener {
@@ -292,116 +310,110 @@ int touchnum;
             int row = 4;
             int col = 5;
 
-            // Why not just swap textures?  All I'm doing is mailing textures with a lot more work.
-            while (sentinel < first) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
+            // Costlier to swap textures from the file, or from object references?
+            while (sentinel < first) {  
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
-
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }
             
             sentinel = 1;
             row = 5;
             col = 7;
             while (sentinel < second) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
-
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }        
             
             sentinel = 1;
             row = 6;
             col = 7;
             while (sentinel < third) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
-
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }  
             
             sentinel = 1;
             row = 5;
             col = 8;
             while (sentinel < fourth) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
-
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }  
             
             sentinel = 1;
             row = 5;
             col = 9;
             while (sentinel < fifth) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
-
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }  
             
             sentinel = 1;
             row = 5;
             col = 10;
             while (sentinel < sixth) {      
-                int saveIndex = actorSet[row][col].index;
-                int saveX = actorSet[row][col].xShift;
-                int saveY = actorSet[row][col].yShift;
-
-                actorSet[row][col].index = actorSet[row + saveX][col + saveY].index;
-                actorSet[row][col].setup();
-
-                actorSet[row + saveX][col + saveY].index = saveIndex;
-                actorSet[row + saveX][col + saveY].setup();
+                int xShift = actorSet[row][col].xShift;
+                int yShift = actorSet[row][col].yShift;                
                 
-                row = row + saveX;
-                col = col + saveY;
-                sentinel++;
+                int priorityA = actorSet[row][col].priority;
+                int priorityB = actorSet[row + xShift][col + yShift].priority;
+                
+                actorSet[row][col].swapPriority(priorityB);
+                actorSet[row + xShift][col + yShift].swapPriority(priorityA);
+                
+                row = row + xShift;
+                col = col + yShift;
+                sentinel++;                
             }              
         }
         

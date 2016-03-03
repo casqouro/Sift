@@ -21,6 +21,9 @@ public class ButtonActor extends Actor {
     int prefH;
     int xShift;
     int yShift;
+   
+    // INVESTIGATE; beneficial to use static texture declarations for the class?
+    // Better than accessing the file all the time?
     
     public ButtonActor() {
         Random rand = new Random();
@@ -39,49 +42,35 @@ public class ButtonActor extends Actor {
         setBounds(xLoc, yLoc, prefW, prefH);
     }
     
-    public boolean matches(int a) {
-        return priority == a;
+    public boolean matches(int priority) {
+        return this.priority == priority;
     }
    
-    public boolean adjacent(int x, int y) {
-        int a = Math.abs((index / 11) - x);
-        int b = Math.abs((index % 11) - y);
-        
-        //System.out.println(a + " " + b);
-        //System.out.println();       
-        return a + b <= 1;
-    }
+    public boolean adjacent(int index) {
+        int difference = Math.abs(this.index - index);
+        return difference == 1 || difference == 11;
+    }   
     
-    public int xDistanceTo(int x) {
-        int a = Math.abs((index / 11) - x);
-        
-        return a;
+    public void swapPriority(int newPriority) {
+        this.priority = newPriority;
+        current = new Texture(new FileHandle("..\\assets\\" + priority + "priority.png"));
+        up = new Texture(new FileHandle("..\\assets\\" + priority + "priority.png"));        
     }
-    
-    public int yDistanceTo(int y) {
-        int a = Math.abs((index % 11) - y);
         
-        return a;
-    }
-    
     public int determineQuadrant() {
-        if (xLoc < 6 && yLoc > 5) {
-            return 0;
+        if ((index / 11) < 6 && (index % 11) > 5) {
+            return 0; // Upper Left Quadrant
         }
         
-        if (xLoc > 5 && yLoc > 4) {
-            return 1;
+        if ((index / 11) > 5 && (index % 11) > 4) {
+            return 1; // Upper Right Quadrant
         }
         
-        if (xLoc > 4 && yLoc < 5) {
-            return 2;
+        if ((index / 11) > 4 && (index % 11) < 5) {
+            return 2; // Lower Right Quadrant
         }
         
-        if (xLoc < 5 && yLoc > 6) {
-            return 3;
-        }        
-        
-        return 1;
+        return 3; // Lower Left Quadrant;      
     }
     
     @Override
