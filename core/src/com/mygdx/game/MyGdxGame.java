@@ -3,6 +3,7 @@ package com.mygdx.game;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -16,6 +17,43 @@ import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/* FEATURE BRAIN-STORMING
+
+   0.  Backtracking from selections is a must. (DONE)
+
+   1.  Scoring
+       A.  Designing some prototypes for scoring logic
+       B.  Desgining where scores will be located relative to the game
+
+   2.  Animation
+       A.  Investigating animations for rotate/deletion.
+
+   3.  SoundFX
+       A.  Try to attach a sound to one action to get a feel for the process.  (DONE)
+
+       - Some very basic audio is in but I don't entirely understand the manipulations.
+
+       - A bit advanced for where I am but it might hold good insights:
+       http://steigert.blogspot.ca/2012/03/8-libgdx-tutorial-sound-and-music.html
+
+   4.  Start Screen
+       A.  Add a start/splash screen before jumping into the game.
+
+   5.  Check for possible matches.  If the game doesn't have matches for the
+       player to make then something has to happen.
+
+       - Can't think of any easy way to do this without brute-force checking.
+
+       - Could be better solved by including the ability to pass by pressing 
+         "SPACE", which is already in.
+    
+   ?   Is it better to swap references from file, or from a static declaration? (DONE)
+        
+       - There seemed to be no noticeable difference, even when running 1000's of tests at a time.
+
+       ? There DID see to be a growing memory issue when testing at larger values.  I need to use dispose().
+*/
+
 public class MyGdxGame extends ApplicationAdapter {
 Stage stage;
 ButtonActor[][] actorSet;
@@ -23,31 +61,28 @@ LinkedList<ButtonActor> touchList;
 int prefW;
 int prefH;
 
+Sound sound;
+float numSelected;
+
 boolean touched;
 int touchnum;
+int currentTile;
 
 boolean quadZero = false;
 boolean quadOne = false;
 boolean quadTwo = false;
 boolean quadThree = false;
-
-/* My current problem is that the bounds of a listener are set when the listener
-   is created.
-
-   I can problem create a custom listener and update its bounds when the button
-   is moved.
-
-   See here: http://stackoverflow.com/questions/24219170/libgdx-custom-click-listener
-*///
     
     @Override
 	public void create () {
             stage = new Stage();
             stage.addListener(new KeyProcessor());
             Gdx.input.setInputProcessor(stage);
-            prefW = 30;
-            prefH = 30;     
-            
+            prefW = Gdx.graphics.getWidth() / 11;
+            prefH = Gdx.graphics.getHeight() / 11;
+                        
+            sound = Gdx.audio.newSound(Gdx.files.internal("sounds/click.ogg"));
+
             touchList = new LinkedList<>();
             
             try {
@@ -97,7 +132,17 @@ boolean quadThree = false;
            However, the game is kinda fun as is!  I might want to push this out,
            and to do so I need to fix this bug.
         */
+        private boolean checkForMatches() {
+            // careful with the white ones right now!  They match!
+            
+            // this is going to take some serious consideration
+            
+            return false;
+        }
+        
         private void postDeletionMovement() {
+            LinkedList<ButtonActor> newTileList = new LinkedList<>();
+            
             touchList.stream().forEach((e) -> {
                 e.inDeletionProcess = true;                        
                 
@@ -117,6 +162,10 @@ boolean quadThree = false;
                         break;
                 }                 
             });
+            
+            touchList.stream().forEach((e) -> {
+                System.out.println(e.index);
+            });             
             
             if (quadZero == true) { // UPPER LEFT
                 for (int adjust = 0; adjust < 5; adjust++) {
@@ -139,6 +188,7 @@ boolean quadThree = false;
                     // Generate new buttons for empty squares
                     for (int a = 5 - length; a >= 0 + adjust; a--) {
                         actorSet[a][6 + adjust].swapPriority(0);
+                        newTileList.add(actorSet[a][6 + adjust]);
                     }
                 }
             }
@@ -164,6 +214,7 @@ boolean quadThree = false;
                     // Generate new buttons for empty squares
                     for (int a = 5 + length; a <= 10 - adjust; a++) {
                         actorSet[6 + adjust][a].swapPriority(0);
+                        newTileList.add(actorSet[6 + adjust][a]);                        
                     }
                 }               
             }       
@@ -189,6 +240,7 @@ boolean quadThree = false;
                     // Generate new buttons for empty squares
                     for (int a = 5 + length; a <= 10 - adjust; a++) {
                         actorSet[a][4 - adjust].swapPriority(0);
+                        newTileList.add(actorSet[a][4 - adjust]);                        
                     }
                 }
             }    
@@ -214,22 +266,29 @@ boolean quadThree = false;
                     // Generate new buttons for empty squares
                     for (int a = 5 - length; a >= 0 + adjust; a--) {
                         actorSet[4 - adjust][a].swapPriority(0);
+                        newTileList.add(actorSet[4 - adjust][a]);                        
                     }
                 }               
-            }            
-            
+            }                             
+                        
             touchList.stream().forEach((e) -> {
                 e.inDeletionProcess = false;    
-            });        
+            });    
             
             quadZero = false;
             quadOne = false;
             quadTwo = false;
             quadThree = false;
             
-            touchList.clear();            
+            newTileList.stream().forEach((e) -> {
+                e.newTile();    
+            }); 
+            
+            touchList.clear();
+            newTileList.clear();            
+            rotate();
         }
-        
+
         // How does the player VOID an action?  Currently they cannot.
         // If they could backtrack their selections and do less than three...?
         private class myListener extends ClickListener {
@@ -240,7 +299,11 @@ boolean quadThree = false;
             }     
             
             @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {               
+                numSelected = 1;
+                long id = sound.play();
+                sound.setPitch(id, 0.25f);                
+                
                 touched = true;
                 touchnum = actor.priority;
                 actor.current = actor.down;
@@ -254,12 +317,14 @@ boolean quadThree = false;
             public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
                 touched = false; 
                 touchnum = 0;
+                numSelected = 0;
 
                 if (touchList.size() > 2) {
                    postDeletionMovement();                    
                 } else {
                     touchList.stream().forEach((e) -> {
                         e.current = e.up;
+                        System.out.println(e.index);
                     });
                     touchList.clear();
                 }                
@@ -278,10 +343,24 @@ boolean quadThree = false;
                     
                     if (!inList) {
                         touchList.add(actor);
-                        actor.current = actor.down;                        
+                        actor.current = actor.down;
+                        
+                        numSelected++;
+                        long id = sound.play();
+                        sound.setPitch(id, 0.25f + 0.05f * numSelected);
+                        System.out.println(0.25f + 0.05f * numSelected);
                     }
-                }                
-                // If I'm going to run deletion logic based on quadrants I really don't need a lot of the above.
+                    
+                    if (inList) {
+                        touchList.getLast().current = touchList.getLast().up;
+                        touchList.removeLast();
+                        
+                        numSelected--;
+                        long id = sound.play();
+                        sound.setPitch(id, 0.25f + 0.05f * numSelected);
+                        System.out.println(0.25f + 0.05f * numSelected);
+                    }
+                }
             }              
         }
 
@@ -290,15 +369,14 @@ boolean quadThree = false;
             public boolean keyDown(InputEvent event, int keycode) {
                 switch (keycode) {
                     case Input.Keys.SPACE:
-                        System.out.println("ROTATE");
                         rotate();
+                        break;
                 }
                 return true;
             }
         }
 
         private void rotate() {
-            int zero = 1;
             int first = 4;
             int second = 8;
             int third = 12;
@@ -310,7 +388,6 @@ boolean quadThree = false;
             int row = 4;
             int col = 5;
 
-            // Costlier to swap textures from the file, or from object references?
             while (sentinel < first) {  
                 int xShift = actorSet[row][col].xShift;
                 int yShift = actorSet[row][col].yShift;                
@@ -422,6 +499,6 @@ boolean quadThree = false;
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
                         
             stage.act();
-            stage.draw();
+            stage.draw();               
 	}
 }

@@ -9,8 +9,8 @@ public class DesktopLauncher {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
                 //System.setProperty("org.lwjgl.opengl.Display.allowSoftwareOpenGL", "true");                
                 config.title = "Sifter";
-                config.height = 480;
-                config.width = 640;              
+                config.height = 660;
+                config.width = 660;              
 		new LwjglApplication(new MyGdxGame(), config);                
 	}
 }
